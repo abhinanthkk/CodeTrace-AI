@@ -85,7 +85,8 @@ class SandboxManager:
         try:
             container = self.client.containers.run(
                 image=self.image,
-                command=["python", "/runner.py", "/exec/user_code.py", "/exec/stdin.txt"],
+                # ENTRYPOINT is "python /runner.py", so command is just the args
+                command=["/exec/user_code.py", "/exec/stdin.txt"],
                 volumes={
                     str(exec_dir.resolve()): {
                         "bind": "/exec",

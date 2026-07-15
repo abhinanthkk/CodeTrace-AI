@@ -67,6 +67,7 @@ async def execute_code(request: ExecuteRequest):
         timeline=result.get("timeline", []),
         error=result.get("error"),
         analysis=result.get("analysis"),
+        explanation=result.get("explanation"),
     )
 
 
