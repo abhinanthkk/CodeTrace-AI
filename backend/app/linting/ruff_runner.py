@@ -4,14 +4,17 @@ CodeTrace Live Fix — Ruff Runner
 Runs Ruff as a subprocess against user-provided Python source code.
 Never writes code into a shell command. Uses stdin for safety.
 
-Ruff rule selection (pyproject.toml or CLI flags):
+Ruff rule selection:
 - F: Pyflakes (undefined names, unused imports, etc.)
-- E/W: pycodestyle errors/warnings
+- E: pycodestyle critical errors (indentation, syntax)
 - B: flake8-bugbear (likely bugs)
-- UP: pyupgrade (modern Python idioms)
-- SIM: flake8-simplify (simplification suggestions)
 
-We prioritize F, B, E over W, UP, SIM for the live editor.
+We intentionally exclude W (pycodestyle warnings), UP (pyupgrade),
+and SIM (flake8-simplify) — those are style/formatting preferences,
+not bugs. CodeTrace Live Fix is an error detection and debugging tool.
+
+Defensive filtering in diagnostic_processor.py further ensures no
+style diagnostics leak through to the frontend.
 """
 
 import json
@@ -19,13 +22,12 @@ import logging
 import shutil
 import subprocess
 import sys
-import uuid
 from typing import Any
 
 logger = logging.getLogger(__name__)
 
-# Rules enabled for live linting — prioritize bugs and mistakes over style
-RUFF_RULES = ["F", "E", "B", "W", "UP", "SIM"]
+# Rules enabled for live linting — bugs and errors only, not style
+RUFF_RULES = ["F", "E", "B"]
 
 # Ruff timeout (seconds)
 RUFF_TIMEOUT = 2
