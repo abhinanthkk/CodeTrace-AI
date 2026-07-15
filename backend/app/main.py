@@ -8,6 +8,7 @@ Start with:
 """
 
 import logging
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -22,6 +23,18 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Startup and shutdown events."""
+    logger.info(f"CodeTrace AI starting on {settings.HOST}:{settings.PORT}")
+    logger.info(f"CORS origin: {settings.CORS_ORIGIN}")
+    logger.info(f"Sandbox image: {settings.SANDBOX_IMAGE}")
+    logger.info(f"AI configured: {settings.ai_configured}")
+    yield
+    logger.info("CodeTrace AI shutting down")
+
+
 # Create FastAPI app
 app = FastAPI(
     title="CodeTrace AI",
@@ -29,6 +42,7 @@ app = FastAPI(
     version="0.1.0",
     docs_url="/api/docs",
     redoc_url="/api/redoc",
+    lifespan=lifespan,
 )
 
 # CORS — allow the Vite dev server
@@ -42,14 +56,6 @@ app.add_middleware(
 
 # Register routes
 app.include_router(execute_router, prefix="/api")
-
-
-@app.on_event("startup")
-async def startup():
-    logger.info(f"CodeTrace AI starting on {settings.HOST}:{settings.PORT}")
-    logger.info(f"CORS origin: {settings.CORS_ORIGIN}")
-    logger.info(f"Sandbox image: {settings.SANDBOX_IMAGE}")
-    logger.info(f"AI configured: {settings.ai_configured}")
 
 
 @app.get("/")
