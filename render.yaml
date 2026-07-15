@@ -1,0 +1,26 @@
+# CodeTrace AI — Render Blueprint
+# Auto-deploys when repo is connected to Render.
+# https://render.com/docs/blueprint-spec
+
+services:
+  - type: web
+    name: codetrace-backend
+    env: docker
+    repo: https://github.com/abhinanthkk/CodeTrace-AI
+    rootDir: backend
+    dockerfilePath: backend/Dockerfile
+    plan: free
+    healthCheckPath: /api/health
+    envVars:
+      - key: EXECUTION_MODE
+        value: subprocess
+      - key: ALLOWED_ORIGINS
+        value: https://codetrace-ai.pages.dev
+      - key: PORT
+        value: "8000"
+      - key: AI_PROVIDER
+        sync: false
+      - key: AI_API_KEY
+        sync: false
+      - key: AI_MODEL
+        sync: false
