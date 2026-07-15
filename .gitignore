@@ -32,3 +32,4 @@ deploy_cloudflare.py
 deploy_render.py
 cleanup.py
 cleanup_deploy.py
+deploy_now.py
