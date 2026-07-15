@@ -71,6 +71,20 @@ class Executor:
                         "explanation": f"Analysis engine error: {e}",
                     }
 
+            # Generate AI/deterministic explanation if there's an error
+            if result.get("error") and result["status"] not in ("sandbox_error",):
+                try:
+                    from ..ai.explanation_service import ExplanationService
+                    svc = ExplanationService()
+                    result["explanation"] = svc.explain(
+                        source_code=code,
+                        error_info=result.get("error"),
+                        timeline=result.get("timeline", []),
+                        analysis=result.get("analysis"),
+                    )
+                except Exception as e:
+                    logger.error(f"Explanation failed: {e}")
+
             # Ensure stdout/stderr are within limits
             max_out = 256 * 1024  # 256 KB
             if len(result.get("stdout", "")) > max_out:
