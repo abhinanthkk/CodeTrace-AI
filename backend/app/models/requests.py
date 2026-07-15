@@ -19,3 +19,14 @@ class ExecuteRequest(BaseModel):
         max_length=64 * 1024,
         description="Optional standard input for the program",
     )
+
+
+class LintRequest(BaseModel):
+    """POST /api/lint request body."""
+
+    code: str = Field(
+        ...,
+        min_length=0,
+        max_length=64 * 1024,
+        description="Python source code to lint (can be empty)",
+    )

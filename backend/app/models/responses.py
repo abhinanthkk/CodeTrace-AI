@@ -68,3 +68,32 @@ class HealthResponse(BaseModel):
     ai_configured: bool
     version: str = "0.1.0"
     execution_mode: str = ""
+
+
+# ── Live Fix / Linting Models ─────────────────────────────────────────────
+
+class DiagnosticFix(BaseModel):
+    message: str = ""
+    applicability: str = ""
+    edits: list[dict[str, Any]] = Field(default_factory=list)
+
+
+class DiagnosticInfo(BaseModel):
+    id: str
+    code: str
+    message: str
+    severity: str  # "error" | "warning" | "info"
+    line: int
+    column: int
+    end_line: int = 0
+    end_column: int = 0
+    source: str = "ruff"
+    fix_available: bool = False
+    fix_type: str | None = None
+    raw_fix: dict[str, Any] | None = None
+
+
+class LintResponse(BaseModel):
+    status: str
+    diagnostics: list[dict[str, Any]] = Field(default_factory=list)
+    ruff_available: bool = True
