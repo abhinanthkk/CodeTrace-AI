@@ -1,0 +1,25 @@
+version: "3.8"
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      - SANDBOX_IMAGE=codetrace-sandbox:latest
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      sandbox-build:
+        condition: service_completed_successfully
+
+  sandbox-build:
+    build:
+      context: ./sandbox
+      dockerfile: Dockerfile
+    image: codetrace-sandbox:latest
+    command: echo "Sandbox image built"

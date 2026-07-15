@@ -9,6 +9,10 @@ __pycache__/
 .venv/
 venv/
 
+# Build output
+frontend/dist/
+*.egg-info/
+
 # IDE
 .idea/
 .vscode/
@@ -18,3 +22,9 @@ venv/
 # OS
 .DS_Store
 Thumbs.db
+
+# Docker
+*.pid
+
+# Traces / temp
+/tmp/traces/
