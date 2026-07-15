@@ -19,7 +19,7 @@ services:
 
   sandbox-build:
     build:
-      context: ./sandbox
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: sandbox/Dockerfile
     image: codetrace-sandbox:latest
     command: echo "Sandbox image built"
