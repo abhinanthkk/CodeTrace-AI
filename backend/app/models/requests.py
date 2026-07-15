@@ -30,3 +30,18 @@ class LintRequest(BaseModel):
         max_length=64 * 1024,
         description="Python source code to lint (can be empty)",
     )
+
+
+class FixRequest(BaseModel):
+    """POST /api/fix request body."""
+
+    code: str = Field(
+        ...,
+        min_length=1,
+        max_length=64 * 1024,
+        description="Full Python source code",
+    )
+    diagnostic_ids: list[str] = Field(
+        default_factory=list,
+        description="IDs of diagnostics to fix",
+    )

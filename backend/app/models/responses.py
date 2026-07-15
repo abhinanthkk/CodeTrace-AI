@@ -97,3 +97,25 @@ class LintResponse(BaseModel):
     status: str
     diagnostics: list[dict[str, Any]] = Field(default_factory=list)
     ruff_available: bool = True
+
+
+class FixEdit(BaseModel):
+    start_line: int
+    start_column: int
+    end_line: int
+    end_column: int
+    replacement: str = ""
+
+
+class FixResponse(BaseModel):
+    status: str  # "success" | "no_diagnostics" | "no_fix_available" | "ai_unavailable" | "ai_error"
+    fix_type: str = "quick"  # "quick" | "block"
+    title: str = ""
+    explanation: str = ""
+    confidence: float = 0.0
+    original_code: str | None = None
+    fixed_code: str | None = None
+    edits: list[dict[str, Any]] = Field(default_factory=list)
+    affected_lines: dict[str, int] = Field(default_factory=dict)
+    requires_ai: bool = False
+    changes: list[dict[str, Any]] | None = None
