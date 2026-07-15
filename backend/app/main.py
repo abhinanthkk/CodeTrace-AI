@@ -4,7 +4,7 @@ CodeTrace AI — FastAPI Application
 Entry point for the backend server.
 
 Start with:
-    uvicorn app.main:app --reload --port 8000
+    uvicorn app.main:app --host 0.0.0.0 --port $PORT
 """
 
 import logging
@@ -16,7 +16,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from .api.execute import router as execute_router
 from .config import settings
 
-# Configure logging
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
@@ -28,14 +27,13 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):
     """Startup and shutdown events."""
     logger.info(f"CodeTrace AI starting on {settings.HOST}:{settings.PORT}")
-    logger.info(f"CORS origin: {settings.CORS_ORIGIN}")
-    logger.info(f"Sandbox image: {settings.SANDBOX_IMAGE}")
+    logger.info(f"Execution mode: {settings.EXECUTION_MODE}")
+    logger.info(f"CORS origins: {settings.cors_origins}")
     logger.info(f"AI configured: {settings.ai_configured}")
     yield
     logger.info("CodeTrace AI shutting down")
 
 
-# Create FastAPI app
 app = FastAPI(
     title="CodeTrace AI",
     description="Intelligent Python debugging and execution visualization platform.",
@@ -45,16 +43,15 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS — allow the Vite dev server
+# CORS — allow configured frontend origins
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[settings.CORS_ORIGIN],
+    allow_origins=settings.cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Register routes
 app.include_router(execute_router, prefix="/api")
 
 

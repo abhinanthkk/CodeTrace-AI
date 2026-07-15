@@ -74,14 +74,15 @@ async def execute_code(request: ExecuteRequest):
 @router.get("/health", response_model=HealthResponse)
 async def health_check():
     """Return application and sandbox health status."""
-    sandbox_available = False
+    backend_available = False
     try:
-        sandbox_available = executor.sandbox.is_available()
+        backend_available = executor.backend.is_available()
     except Exception:
         pass
 
     return HealthResponse(
         status="healthy",
-        sandbox_available=sandbox_available,
+        sandbox_available=backend_available,
         ai_configured=settings.ai_configured,
+        execution_mode=settings.EXECUTION_MODE,
     )

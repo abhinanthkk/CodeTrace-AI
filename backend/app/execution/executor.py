@@ -2,57 +2,69 @@
 CodeTrace AI — Executor
 
 Orchestrates the full execution pipeline:
-1. Create temporary files
-2. Run code in Docker sandbox
-3. Parse trace results
-4. Run deterministic analysis on errors
-5. Return structured response
+1. Select backend based on EXECUTION_MODE
+2. Create temporary files
+3. Run code through the selected backend
+4. Parse trace results
+5. Run deterministic analysis on errors
+6. Generate AI/deterministic explanation
+7. Return structured response
 """
 
 import logging
 from typing import Any
 
 from ..analysis.analyzer import analyze_failure
+from ..config import settings
+from .backend import ExecutionBackend
+from .docker_backend import DockerExecutionBackend
 from .execution_manager import ExecutionManager
-from .sandbox import SandboxError, SandboxManager
+from .subprocess_backend import SubprocessExecutionBackend
 
 logger = logging.getLogger(__name__)
+
+
+def _create_backend() -> ExecutionBackend:
+    """
+    Factory: select the execution backend based on EXECUTION_MODE.
+
+    "docker"     → DockerExecutionBackend (requires Docker daemon)
+    "subprocess" → SubprocessExecutionBackend (always available)
+    """
+    mode = settings.EXECUTION_MODE.lower().strip()
+
+    if mode == "docker":
+        logger.info("Using Docker execution backend")
+        return DockerExecutionBackend()
+    elif mode == "subprocess":
+        logger.info("Using subprocess execution backend")
+        return SubprocessExecutionBackend()
+    else:
+        logger.warning(f"Unknown EXECUTION_MODE '{mode}', falling back to subprocess")
+        return SubprocessExecutionBackend()
 
 
 class Executor:
     """
     Orchestrates a single code execution from start to finish.
-
-    Usage:
-        executor = Executor()
-        result = await executor.execute(code="...", input="...")
     """
 
     def __init__(self):
-        self.sandbox = SandboxManager()
+        self.backend = _create_backend()
         self.exec_mgr = ExecutionManager()
 
     def execute(self, code: str, stdin_data: str = "") -> dict[str, Any]:
         """
         Execute user code and return the full trace result.
-
-        Args:
-            code: Python source code to trace
-            stdin_data: Optional standard input for the program
-
-        Returns:
-            Dict with execution_id, status, stdout, stderr, timeline,
-            error, analysis (ready for the API response).
         """
         exec_id = self.exec_mgr.create_execution()
 
         try:
-            # Write user files
             self.exec_mgr.write_files(exec_id, code, stdin_data)
             exec_dir = self.exec_mgr._executions[exec_id]
 
-            # Run in sandbox
-            result = self.sandbox.run(exec_dir)
+            # Run through the selected backend
+            result = self.backend.execute(exec_dir, code, stdin_data)
             result["execution_id"] = exec_id
 
             # Run deterministic analysis if there was a runtime error
@@ -86,7 +98,7 @@ class Executor:
                     logger.error(f"Explanation failed: {e}")
 
             # Ensure stdout/stderr are within limits
-            max_out = 256 * 1024  # 256 KB
+            max_out = settings.MAX_OUTPUT_SIZE
             if len(result.get("stdout", "")) > max_out:
                 result["stdout"] = result["stdout"][:max_out] + "\n...<output truncated>"
                 if result.get("status") == "success":
@@ -96,8 +108,9 @@ class Executor:
 
             return result
 
-        except SandboxError as e:
-            logger.error(f"Sandbox error: {e}")
+        except RuntimeError as e:
+            # Backend infrastructure error (e.g., Docker unavailable)
+            logger.error(f"Backend error: {e}")
             return {
                 "execution_id": exec_id,
                 "status": "sandbox_error",
@@ -118,8 +131,8 @@ class Executor:
             self.exec_mgr.cleanup(exec_id)
 
     def health_check(self) -> dict[str, Any]:
-        """Check if the sandbox is available."""
+        """Check backend availability."""
         return {
-            "docker_available": self.sandbox.is_available(),
-            "sandbox_image": self.sandbox.image,
+            "execution_mode": self.backend.name,
+            "execution_available": self.backend.is_available(),
         }

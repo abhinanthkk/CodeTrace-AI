@@ -1,16 +1,17 @@
 import axios from 'axios';
 
+// In production (Vercel), use the backend URL from env var.
+// In development (Vite), use the local proxy.
+const BACKEND_URL = import.meta.env.VITE_API_URL || '/api';
+
 const api = axios.create({
-  baseURL: '/api',
+  baseURL: BACKEND_URL,
   timeout: 15000,
   headers: { 'Content-Type': 'application/json' },
 });
 
 /**
  * Execute Python code with runtime tracing.
- * @param {string} code - Python source code
- * @param {string} input - Optional stdin data
- * @returns {Promise<object>} - Execution result
  */
 export async function executeCode(code, input = '') {
   const response = await api.post('/execute', { code, input });
@@ -19,7 +20,6 @@ export async function executeCode(code, input = '') {
 
 /**
  * Check backend and sandbox health.
- * @returns {Promise<object>} - Health status
  */
 export async function checkHealth() {
   const response = await api.get('/health');

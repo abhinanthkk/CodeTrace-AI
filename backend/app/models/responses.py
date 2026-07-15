@@ -67,3 +67,4 @@ class HealthResponse(BaseModel):
     sandbox_available: bool
     ai_configured: bool
     version: str = "0.1.0"
+    execution_mode: str = ""

@@ -242,30 +242,116 @@ docker-compose up --build
 
 ## Environment Variables
 
+### Backend
+
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
-| `AI_PROVIDER` | No | `openai` | AI provider: `openai` or `gemini` |
-| `AI_API_KEY` | No | — | API key for the chosen provider |
-| `AI_MODEL` | No | `gpt-4o` | Model name for the provider |
-| `SANDBOX_IMAGE` | No | `codetrace-sandbox:latest` | Docker image for execution |
-| `EXECUTION_TIMEOUT` | No | `5` | Max execution time in seconds |
-| `EXECUTION_MEMORY` | No | `128m` | Memory limit per execution |
-| `EXECUTION_CPU` | No | `0.5` | CPU limit per execution |
+| `EXECUTION_MODE` | Yes | `docker` | `docker` (local) or `subprocess` (cloud) |
+| `PORT` | No | `8000` | Server port (set by hosting platform) |
 | `HOST` | No | `0.0.0.0` | Server host |
-| `PORT` | No | `8000` | Server port |
-| `CORS_ORIGIN` | No | `http://localhost:5173` | Allowed frontend origin |
+| `ALLOWED_ORIGINS` | Yes | `http://localhost:5173` | Comma-separated CORS origins |
+| `AI_PROVIDER` | No | — | `openai` or `gemini` |
+| `AI_API_KEY` | No | — | API key for the chosen provider |
+| `AI_MODEL` | No | `gpt-4o` | Model name |
+| `SANDBOX_IMAGE` | No | `codetrace-sandbox:latest` | Docker image (docker mode only) |
+| `EXECUTION_TIMEOUT` | No | `5` | Max execution time in seconds |
+| `EXECUTION_MEMORY` | No | `128m` | Memory limit (docker mode only) |
+| `EXECUTION_CPU` | No | `0.5` | CPU limit (docker mode only) |
+| `MAX_CODE_SIZE` | No | `65536` | Max code size in bytes |
+| `MAX_INPUT_SIZE` | No | `65536` | Max stdin size in bytes |
+| `MAX_OUTPUT_SIZE` | No | `262144` | Max output size in bytes |
 
-## API Documentation
+### Frontend
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `VITE_API_URL` | Yes | `http://localhost:8000/api` | Backend API base URL |
+
+## Deployment
+
+### Live Architecture
+
+```
+Cloudflare Pages                   Render (or Koyeb)
+┌──────────────────┐              ┌─────────────────────────┐
+│ React + Vite     │──HTTPS──────→│ FastAPI                  │
+│ Monaco Editor    │              │ EXECUTION_MODE=subprocess│
+│ Tailwind CSS     │              │                          │
+│                  │              │ SubprocessExecutionBackend│
+│ VITE_API_URL=    │              │  ↓ python3 subprocess    │
+│  <backend-url>   │              │  ↓ sys.settrace()        │
+└──────────────────┘              │  ↓ Analyzer → Explain    │
+                                  └─────────────────────────┘
+```
+
+### Execution Modes
+
+| Mode | Environment | How it works | Security |
+|------|------------|-------------|----------|
+| `docker` | Local dev | Docker container with `--network none`, `--read-only`, CPU/memory limits, non-root user | Container isolation |
+| `subprocess` | Free cloud hosting | Separate Python process with `resource.setrlimit`, sanitized env, timeout | OS process boundary |
+
+### Local Development (Docker mode)
+
+```bash
+# 1. Build sandbox image
+docker build -f sandbox/Dockerfile -t codetrace-sandbox .
+
+# 2. Start backend
+cd backend
+python3 -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+EXECUTION_MODE=docker uvicorn app.main:app --reload --port 8000
+
+# 3. Start frontend
+cd frontend
+npm install && npm run dev
+```
+
+### Production Deployment (Free Tier)
+
+#### Frontend → Cloudflare Pages
+
+1. Push to GitHub
+2. In Cloudflare Pages dashboard:
+   - **Framework preset**: Vite
+   - **Root directory**: `frontend`
+   - **Build command**: `npm run build`
+   - **Output directory**: `dist`
+   - **Environment variable**: `VITE_API_URL` = your backend URL
+
+#### Backend → Render
+
+1. Push to GitHub
+2. In Render dashboard, create a **New Web Service**:
+   - **Repository**: your GitHub repo
+   - **Root directory**: `backend`
+   - **Build command**: `pip install -r requirements.txt`
+   - **Start command**: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
+3. Set environment variables:
+   - `EXECUTION_MODE=subprocess`
+   - `ALLOWED_ORIGINS=https://codetrace-ai.pages.dev`
+   - `PORT=8000` (Render sets `$PORT` automatically)
+   - `AI_PROVIDER=gemini` (optional)
+   - `AI_API_KEY=<your-key>` (optional)
+4. Health check path: `/api/health`
+
+Or deploy with Docker:
+   - **Root directory**: (repo root)
+   - **Dockerfile path**: `backend/Dockerfile`
+   - Set same environment variables
+
+### API Documentation
 
 ### `GET /api/health`
-
-Returns backend and sandbox readiness.
 
 ```json
 {
   "status": "healthy",
   "sandbox_available": true,
-  "ai_configured": false
+  "ai_configured": false,
+  "version": "0.1.0",
+  "execution_mode": "subprocess"
 }
 ```
 
@@ -360,27 +446,43 @@ Execute Python code with runtime tracing.
 | `output_limit` | stdout/stderr exceeded size limits |
 | `sandbox_error` | Docker or infrastructure failure |
 
-## Security Limitations (MVP)
+## Security Limitations
 
-The Docker sandbox provides a meaningful security boundary over running
-user code directly in the server process, but it is **not a fully secure
-untrusted-code execution platform**.
+### Docker Mode (`EXECUTION_MODE=docker`)
 
-- **Container escape**: While Docker + non-root user + no network + resource
-  limits make escape significantly harder, container escape vulnerabilities
-  exist. Do not expose this service to untrusted users on a shared host
-  without additional hardening (gVisor, Firecracker, or a VM boundary).
-- **Resource exhaustion**: The Docker daemon itself can be overwhelmed by
-  many concurrent executions. The MVP does not include a queue or rate limiter.
-- **Malicious output**: The tracing system serializes variable state to JSON.
-  Extremely large or deeply nested objects could consume memory during
-  serialization. The serializer implements depth and size limits to mitigate
-  this.
-- **Side channels**: `sys.settrace()` runs inside the sandbox container.
-  Malicious code that patches the tracer or abuses `ctypes` could theoretically
-  interfere with tracing, but cannot escape the container.
+The Docker sandbox provides a meaningful security boundary, but is **not
+a fully secure untrusted-code execution platform**.
 
-For a production deployment, consider:
+- **Container escape**: Docker + non-root user + no network + resource limits
+  make escape harder, but container escape vulnerabilities exist.
+- **Resource exhaustion**: The Docker daemon can be overwhelmed by many
+  concurrent executions. No queue or rate limiter in MVP.
+- **Malicious output**: The serializer implements depth and size limits.
+
+### Subprocess Mode (`EXECUTION_MODE=subprocess`)
+
+The subprocess mode is a **portfolio demo fallback**. It runs user code
+in a separate OS process — NOT in the FastAPI server process — but does
+NOT provide the same isolation as Docker:
+
+- **No network isolation**: Relies on platform network policies
+- **No filesystem isolation**: Beyond the temp directory
+- **No cgroup isolation**: Uses `resource.setrlimit` as best-effort on Linux
+- **Environment sanitized**: API keys and secrets are stripped from the child
+  process environment
+
+**Subprocess mode is suitable for a controlled portfolio demonstration.**
+It is not a hardened multi-tenant sandbox.
+
+### Future Production Sandbox Architecture
+
+For a production deployment supporting arbitrary user code:
+
+- **gVisor (runsc)**: Drop-in Docker replacement with syscall filtering
+- **Firecracker**: microVM per execution, true hardware-level isolation
+- **Dedicated worker pool**: Per-execution VM/container with full teardown
+- **Queue + rate limiting**: Prevent resource exhaustion
+- **gRPC sandbox service**: Separate sandbox microservice on hardened hosts
 - gVisor (runsc) as the container runtime
 - A job queue with worker isolation (e.g., per-job VMs)
 - Rate limiting and authentication
