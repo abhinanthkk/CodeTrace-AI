@@ -22,6 +22,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from app.tracing.tracer import PythonTracer
+from app.analysis.analyzer import analyze_failure
 
 
 def main():
@@ -59,10 +60,17 @@ def main():
     tracer = PythonTracer(source_path, stdin_data=args.stdin)
     tracer.run()
 
+    result = tracer.to_dict()
+
+    # Run deterministic failure analysis if there was an error
+    if result.get("error") and result["status"] != "syntax_error":
+        timeline = result.get("timeline", [])
+        result["analysis"] = analyze_failure(result["error"], timeline)
+
     # Output the result
     indent = 2 if args.pretty else None
     import json
-    print(json.dumps(tracer.to_dict(), indent=indent, default=str, ensure_ascii=False))
+    print(json.dumps(result, indent=indent, default=str, ensure_ascii=False))
 
 
 if __name__ == "__main__":
