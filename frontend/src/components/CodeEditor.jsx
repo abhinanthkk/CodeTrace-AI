@@ -1,9 +1,7 @@
 import React, { useRef, useEffect, useCallback } from 'react';
 import Editor from '@monaco-editor/react';
 
-// Decoration type constants
-const HIGHLIGHT_LINE = 'highlight-line';
-const ERROR_LINE = 'error-line';
+const MARKER_OWNER = 'codetrace-live';
 
 export default function CodeEditor({
   code,
@@ -11,16 +9,20 @@ export default function CodeEditor({
   selectedLine,
   errorLine,
   readOnly,
+  lintDiagnostics = [],
+  onEditorMount,
 }) {
   const editorRef = useRef(null);
+  const monacoRef = useRef(null);
   const decorationsRef = useRef([]);
 
-  const handleMount = useCallback((editor) => {
+  const handleMount = useCallback((editor, monaco) => {
     editorRef.current = editor;
-  }, []);
+    monacoRef.current = monaco;
+    if (onEditorMount) onEditorMount(editor, monaco);
+  }, [onEditorMount]);
 
-  // Update decorations when selectedLine or errorLine changes.
-  // Uses editor.deltaDecorations to avoid recreating the editor.
+  // ── Runtime decorations (existing) ──────────────────────────────────
   useEffect(() => {
     const editor = editorRef.current;
     if (!editor) return;
@@ -67,7 +69,34 @@ export default function CodeEditor({
     );
   }, [selectedLine, errorLine]);
 
-  // Reveal the selected line in the editor
+  // ── Lint markers (new — coexists with decorations) ──────────────────
+  useEffect(() => {
+    const editor = editorRef.current;
+    const monaco = monacoRef.current;
+    if (!editor || !monaco) return;
+
+    const model = editor.getModel();
+    if (!model) return;
+
+    const markers = lintDiagnostics.map((d) => ({
+      severity:
+        d.severity === 'error'
+          ? monaco.MarkerSeverity.Error
+          : d.severity === 'warning'
+          ? monaco.MarkerSeverity.Warning
+          : monaco.MarkerSeverity.Info,
+      message: `${d.code} — ${d.message}`,
+      startLineNumber: d.line || 1,
+      startColumn: d.column || 1,
+      endLineNumber: d.end_line || d.line || 1,
+      endColumn: d.end_column || (d.column || 1) + 5,
+      source: 'Ruff',
+    }));
+
+    monaco.editor.setModelMarkers(model, MARKER_OWNER, markers);
+  }, [lintDiagnostics]);
+
+  // Reveal selected line
   useEffect(() => {
     const editor = editorRef.current;
     if (!editor || !selectedLine) return;

@@ -68,3 +68,54 @@ class HealthResponse(BaseModel):
     ai_configured: bool
     version: str = "0.1.0"
     execution_mode: str = ""
+
+
+# ── Live Fix / Linting Models ─────────────────────────────────────────────
+
+class DiagnosticFix(BaseModel):
+    message: str = ""
+    applicability: str = ""
+    edits: list[dict[str, Any]] = Field(default_factory=list)
+
+
+class DiagnosticInfo(BaseModel):
+    id: str
+    code: str
+    message: str
+    severity: str  # "error" | "warning" | "info"
+    line: int
+    column: int
+    end_line: int = 0
+    end_column: int = 0
+    source: str = "ruff"
+    fix_available: bool = False
+    fix_type: str | None = None
+    raw_fix: dict[str, Any] | None = None
+
+
+class LintResponse(BaseModel):
+    status: str
+    diagnostics: list[dict[str, Any]] = Field(default_factory=list)
+    ruff_available: bool = True
+
+
+class FixEdit(BaseModel):
+    start_line: int
+    start_column: int
+    end_line: int
+    end_column: int
+    replacement: str = ""
+
+
+class FixResponse(BaseModel):
+    status: str  # "success" | "no_diagnostics" | "no_fix_available" | "ai_unavailable" | "ai_error"
+    fix_type: str = "quick"  # "quick" | "block"
+    title: str = ""
+    explanation: str = ""
+    confidence: float = 0.0
+    original_code: str | None = None
+    fixed_code: str | None = None
+    edits: list[dict[str, Any]] = Field(default_factory=list)
+    affected_lines: dict[str, int] = Field(default_factory=dict)
+    requires_ai: bool = False
+    changes: list[dict[str, Any]] | None = None

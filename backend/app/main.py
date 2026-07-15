@@ -14,6 +14,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from .api.execute import router as execute_router
+from .api.lint import router as lint_router
+from .api.fix import router as fix_router
 from .config import settings
 
 logging.basicConfig(
@@ -53,6 +55,8 @@ app.add_middleware(
 )
 
 app.include_router(execute_router, prefix="/api")
+app.include_router(lint_router, prefix="/api")
+app.include_router(fix_router, prefix="/api")
 
 
 @app.get("/")
