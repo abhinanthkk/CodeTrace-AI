@@ -1,28 +1,24 @@
 # CodeTrace AI — Backend Image
 #
-# Build:
-#   docker build -t codetrace-backend -f backend/Dockerfile .
+# Build (from repo root):
+#   docker build -t codetrace-backend -f backend/Dockerfile backend/
 #
-# Run (subprocess mode — free cloud hosting):
+# Build (from backend/ — Render uses this context):
+#   docker build -t codetrace-backend .
+#
+# Run (subprocess mode):
 #   docker run --rm -p 8000:8000 -e EXECUTION_MODE=subprocess codetrace-backend
-#
-# Run (Docker mode — local dev, needs Docker socket):
-#   docker run --rm -p 8000:8000 \
-#     -e EXECUTION_MODE=docker \
-#     -v /var/run/docker.sock:/var/run/docker.sock \
-#     codetrace-backend
 
 FROM python:3.12-slim
 
 WORKDIR /app
 
-# Install system dependencies (none needed beyond slim base)
-# Install Python dependencies
-COPY backend/requirements.txt .
+# Copy and install dependencies
+COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
-COPY backend/app/ ./app/
+COPY app/ ./app/
 
 # Create a non-root user for running the server
 RUN useradd --create-home --shell /bin/bash appuser && \
