@@ -15,7 +15,7 @@ import FixPreview from '../components/FixPreview';
 
 export default function DebuggerPage() {
   const [code, setCode] = useState(
-    '# Write your Python code here\narr = [10, 20, 30]\n\nfor i in range(4):\n    print(arr[i])\n'
+    'name = "Abhinanth"\n\nprint(nam)\n'
   );
   const [stdin, setStdin] = useState('');
   const [result, setResult] = useState(null);
