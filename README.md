@@ -195,7 +195,7 @@ codetrace/
 
 - Python 3.12+
 - Node.js 18+
-- Docker Engine
+- (Optional) Docker Engine — for Docker sandbox mode (`EXECUTION_MODE=docker`)
 - (Optional) OpenAI or Gemini API key for AI explanations
 
 ### Quick Start
@@ -209,12 +209,7 @@ cd CodeTrace-AI
 cp .env.example .env
 # Edit .env and add your API key (optional)
 
-# Build the sandbox image
-cd sandbox
-docker build -t codetrace-sandbox:latest .
-cd ..
-
-# Start the backend
+# Start the backend (subprocess mode — no Docker needed)
 cd backend
 python -m venv .venv
 source .venv/bin/activate   # or .venv\Scripts\activate on Windows
@@ -233,10 +228,10 @@ npm run dev
 The Vite dev server starts at `http://localhost:5173` and proxies
 `/api` requests to the FastAPI backend at `http://localhost:8000`.
 
-### Docker Setup
+### Docker Setup (Optional)
 
 ```bash
-# Build and start everything
+# Build and start everything with Docker sandbox
 docker-compose up --build
 ```
 
@@ -246,7 +241,7 @@ docker-compose up --build
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
-| `EXECUTION_MODE` | Yes | `docker` | `docker` (local) or `subprocess` (cloud) |
+| `EXECUTION_MODE` | Yes | `subprocess` | `subprocess` (default, all environments) or `docker` (local only) |
 | `PORT` | No | `8000` | Server port (set by hosting platform) |
 | `HOST` | No | `0.0.0.0` | Server host |
 | `ALLOWED_ORIGINS` | Yes | `http://localhost:5173` | Comma-separated CORS origins |
@@ -291,19 +286,36 @@ Cloudflare Pages                   Render (or Koyeb)
 | `docker` | Local dev | Docker container with `--network none`, `--read-only`, CPU/memory limits, non-root user | Container isolation |
 | `subprocess` | Free cloud hosting | Separate Python process with `resource.setrlimit`, sanitized env, timeout | OS process boundary |
 
-### Local Development (Docker mode)
+### Local Development (subprocess mode — recommended)
 
 ```bash
-# 1. Build sandbox image
-docker build -f sandbox/Dockerfile -t codetrace-sandbox .
-
-# 2. Start backend
+# 1. Start backend
 cd backend
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
+uvicorn app.main:app --reload --port 8000
+
+# 2. Start frontend
+cd frontend
+npm install && npm run dev
+```
+
+The backend runs user code in isolated Python subprocesses. No Docker required.
+
+### Local Development (Docker mode — optional)
+
+```bash
+# 1. Install docker Python package
+pip install docker
+
+# 2. Build sandbox image
+docker build -f sandbox/Dockerfile -t codetrace-sandbox .
+
+# 3. Start backend
+cd backend
 EXECUTION_MODE=docker uvicorn app.main:app --reload --port 8000
 
-# 3. Start frontend
+# 4. Start frontend
 cd frontend
 npm install && npm run dev
 ```

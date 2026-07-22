@@ -1,12 +1,14 @@
 """
-CodeTrace AI — Docker Execution Backend
+CodeTrace AI — Docker Execution Backend (OPTIONAL)
 
 Runs user code inside an isolated Docker container.
-This is the recommended execution mode for local development.
+This module is only loaded when EXECUTION_MODE=docker and the
+docker Python package is installed.
 
 Requires:
 - Docker daemon with accessible socket
 - codetrace-sandbox Docker image (pre-built)
+- docker Python package (pip install docker)
 """
 
 import json
@@ -14,14 +16,22 @@ import logging
 from pathlib import Path
 from typing import Any
 
-import docker
-from docker.errors import DockerException, ImageNotFound
-from docker.models.containers import Container
+try:
+    import docker
+    from docker.errors import DockerException, ImageNotFound
+    from docker.models.containers import Container
+    DOCKER_AVAILABLE = True
+except ImportError:
+    DOCKER_AVAILABLE = False
 
 from ..config import settings
 from .backend import ExecutionBackend
 
 logger = logging.getLogger(__name__)
+
+if not DOCKER_AVAILABLE:
+    # Stub types so the module can be imported without the docker package
+    docker = None  # type: ignore
 
 
 class DockerExecutionBackend(ExecutionBackend):
@@ -42,14 +52,18 @@ class DockerExecutionBackend(ExecutionBackend):
         self.timeout = settings.EXECUTION_TIMEOUT
         self.memory = settings.EXECUTION_MEMORY
         self.cpu = settings.EXECUTION_CPU
-        self._client: docker.DockerClient | None = None
+        self._client = None
 
     @property
     def name(self) -> str:
         return "docker"
 
     @property
-    def client(self) -> docker.DockerClient:
+    def client(self):
+        if not DOCKER_AVAILABLE:
+            raise RuntimeError(
+                "Docker package is not installed. Run: pip install docker"
+            )
         if self._client is None:
             try:
                 self._client = docker.from_env()
@@ -71,7 +85,7 @@ class DockerExecutionBackend(ExecutionBackend):
         if not code_file.exists():
             return self._error_result("Code file not found")
 
-        container: Container | None = None
+        container = None
         try:
             container = self.client.containers.run(
                 image=self.image,
@@ -141,7 +155,7 @@ class DockerExecutionBackend(ExecutionBackend):
         except (ValueError, json.JSONDecodeError):
             return self._error_result(logs[:1000])
 
-    def _kill(self, container: Container) -> None:
+    def _kill(self, container) -> None:
         try:
             container.kill()
         except Exception:

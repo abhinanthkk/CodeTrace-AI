@@ -17,7 +17,6 @@ from typing import Any
 from ..analysis.analyzer import analyze_failure
 from ..config import settings
 from .backend import ExecutionBackend
-from .docker_backend import DockerExecutionBackend
 from .execution_manager import ExecutionManager
 from .subprocess_backend import SubprocessExecutionBackend
 
@@ -28,14 +27,19 @@ def _create_backend() -> ExecutionBackend:
     """
     Factory: select the execution backend based on EXECUTION_MODE.
 
+    "subprocess" → SubprocessExecutionBackend (always available, default)
     "docker"     → DockerExecutionBackend (requires Docker daemon)
-    "subprocess" → SubprocessExecutionBackend (always available)
     """
     mode = settings.EXECUTION_MODE.lower().strip()
 
     if mode == "docker":
         logger.info("Using Docker execution backend")
-        return DockerExecutionBackend()
+        try:
+            from .docker_backend import DockerExecutionBackend
+            return DockerExecutionBackend()
+        except ImportError:
+            logger.warning("Docker package not installed, falling back to subprocess")
+            return SubprocessExecutionBackend()
     elif mode == "subprocess":
         logger.info("Using subprocess execution backend")
         return SubprocessExecutionBackend()

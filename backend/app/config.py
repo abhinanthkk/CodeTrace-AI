@@ -34,9 +34,9 @@ class Settings:
         ]
 
     # ── Execution Mode ──────────────────────────────────────────────────
-    # "docker"     — Docker sandbox (local dev, recommended)
-    # "subprocess" — Subprocess runner (free cloud hosting)
-    EXECUTION_MODE: str = os.getenv("EXECUTION_MODE", "docker")
+    # "subprocess" — Subprocess runner (all environments, recommended)
+    # "docker"     — Docker sandbox (local dev only, requires Docker daemon)
+    EXECUTION_MODE: str = os.getenv("EXECUTION_MODE", "subprocess")
 
     # Docker sandbox settings (used when EXECUTION_MODE=docker)
     SANDBOX_IMAGE: str = os.getenv("SANDBOX_IMAGE", "codetrace-sandbox:latest")

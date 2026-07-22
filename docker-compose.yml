@@ -1,3 +1,7 @@
+# CodeTrace AI — Docker Compose (Optional)
+# Only needed when using EXECUTION_MODE=docker with a Docker sandbox.
+# The default subprocess mode does NOT require Docker or docker-compose.
+
 version: "3.8"
 
 services:
@@ -10,6 +14,7 @@ services:
     env_file:
       - .env
     environment:
+      - EXECUTION_MODE=docker
       - SANDBOX_IMAGE=codetrace-sandbox:latest
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock

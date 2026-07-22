@@ -27,10 +27,10 @@ async def execute_code(request: ExecuteRequest):
     """
     Execute Python code with runtime tracing.
 
-    The code runs inside an isolated Docker sandbox with:
-    - No network access
-    - CPU and memory limits
+    The code runs in an isolated subprocess (or Docker sandbox
+    when configured) with:
     - Execution timeout
+    - Resource limits
 
     Returns a structured trace timeline, error information,
     deterministic failure analysis, and (optionally) AI explanation.

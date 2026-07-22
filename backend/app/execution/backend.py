@@ -3,8 +3,8 @@ CodeTrace AI — Execution Backend Abstraction
 
 Defines the interface for code execution backends.
 The executor selects a backend based on EXECUTION_MODE:
-- "docker":     DockerExecutionBackend (local dev, full sandbox)
-- "subprocess": SubprocessExecutionBackend (free cloud hosting)
+- "subprocess": SubprocessExecutionBackend (default, all environments)
+- "docker":     DockerExecutionBackend (local dev, requires Docker daemon)
 """
 
 from abc import ABC, abstractmethod

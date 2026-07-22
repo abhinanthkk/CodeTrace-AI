@@ -1,7 +1,10 @@
 """
-CodeTrace AI — Docker Sandbox Manager
+CodeTrace AI — Docker Sandbox Manager (OPTIONAL)
 
 Manages Docker containers for isolated code execution.
+This module is NOT imported by the main execution flow.
+It is kept as a reference for optional Docker-based execution.
+
 Each execution gets a fresh container with:
 - No network access
 - CPU and memory limits
@@ -15,9 +18,13 @@ import logging
 from pathlib import Path
 from typing import Any
 
-import docker
-from docker.errors import DockerException, ImageNotFound, NotFound
-from docker.models.containers import Container
+try:
+    import docker
+    from docker.errors import DockerException, ImageNotFound, NotFound
+    from docker.models.containers import Container
+    DOCKER_AVAILABLE = True
+except ImportError:
+    DOCKER_AVAILABLE = False
 
 from ..config import settings
 
