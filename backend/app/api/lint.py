@@ -53,5 +53,5 @@ async def lint_code(request: LintRequest):
     return LintResponse(
         status="success",
         diagnostics=diagnostics,
-        ruff_available=True,
+        ruff_available=check_ruff_available(),
     )

@@ -47,6 +47,11 @@ export default function useLiveLint(code) {
       setDiagnostics(diags);
       setRuffAvailable(result.ruff_available !== false);
 
+      if (result.ruff_available === false) {
+        setLintStatus('unavailable');
+        return;
+      }
+
       // Count only errors and warnings for status
       const issues = diags.filter((d) => d.severity === 'error' || d.severity === 'warning');
       if (issues.length > 0) {

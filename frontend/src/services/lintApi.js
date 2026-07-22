@@ -4,7 +4,7 @@ const BACKEND_URL = import.meta.env.VITE_API_URL || '/api';
 
 const lintClient = axios.create({
   baseURL: BACKEND_URL,
-  timeout: 5000,
+  timeout: 30000,
   headers: { 'Content-Type': 'application/json' },
 });
 
